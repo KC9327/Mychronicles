@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <title>My Chronicles</title>
 
-<!--- PWA APP TAGS --->
-<link rel="manifest" href="manifest.json">
+<!-- PWA APP TAGS -->
+<link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#F2F2F7">
-<link rel="apple-touch-icon" href="icon.png">
+<link rel="apple-touch-icon" href="./icon.png">
 
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,14 +19,14 @@
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-<!-- NEW: CryptoJS for Local Data Encryption -->
+<!-- CryptoJS for Local Data Encryption -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
 <!-- Service Worker Registration -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('/sw.js').then(function(registration) {
+      navigator.serviceWorker.register('./sw.js').then(function(registration) {
         console.log('ServiceWorker registration successful');
       }, function(err) {
         console.log('ServiceWorker registration failed: ', err);
@@ -36,7 +36,6 @@
 </script>
 
 <style>
-/* (Your existing CSS stays exactly the same here) */
 /* Importing highly legible, modern geometric fonts */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Outfit:wght@400;600;800&display=swap');
 
@@ -49,7 +48,7 @@ body {
   padding-bottom: 100px;
   color: #1C1C1E;
   overflow-x: hidden;
-  font-variant-numeric: tabular-nums; /* Ensures numbers are perfectly aligned */
+  font-variant-numeric: tabular-nums; 
   -webkit-font-smoothing: antialiased;
 }
 
@@ -63,7 +62,6 @@ body {
   transition: transform 0.2s ease;
 }
 
-/* Heading uniformity using Outfit */
 h1, h2, h3, h4, .stat-value {
   font-family: 'Outfit', sans-serif;
   color: #1C1C1E;
@@ -168,7 +166,7 @@ h1, h2, h3, h4, .stat-value {
   cursor: pointer;
 }
 
-  .dbtn {
+.dbtn {
   float: right;
   background: none;
   border: none;
@@ -184,7 +182,7 @@ h1, h2, h3, h4, .stat-value {
   margin-top: 20px;
 }
 
-  p, h1, h2, h3, h4, .lbl, .stat-value {
+p, h1, h2, h3, h4, .lbl, .stat-value {
   user-select: none;
   -webkit-user-select: none;
   cursor: default;
@@ -196,54 +194,58 @@ h1, h2, h3, h4, .stat-value {
 .tab-content { animation: slideIn 0.3s ease-out; }
 .welcome-card { animation: fadeIn 0.4s ease-out; }
 </style>
-  <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js').then(function(registration) {
-        console.log('ServiceWorker registration successful');
-      }, function(err) {
-        console.log('ServiceWorker registration failed: ', err);
-      });
-    });
-  }
-</script>
-</head>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
 const {useState, useEffect} = React;
 
-// --- NEW: MILITARY-GRADE ENCRYPTED STORAGE ---
+// --- 1. MILITARY-GRADE ENCRYPTED STORAGE (For Private Data) ---
 function useSecureStorage(key, init, secretKey) {
   const [val, setVal] = useState(() => {
     try {
       const encryptedData = window.localStorage.getItem(key);
       if (encryptedData !== null) {
-        // If we have a secret key, try to decrypt it
         if (secretKey) {
           const bytes = CryptoJS.AES.decrypt(encryptedData, secretKey);
           const decrypted = bytes.toString(CryptoJS.enc.Utf8);
           return JSON.parse(decrypted);
         }
-        return init; // If locked, return empty state
+        return init; 
       }
       return init;
     } catch(e) { return init; }
   });
 
+  useEffect(() => {
+    const handleStorage = (e) => {
+      if (e.detail && e.detail.key === key) setVal(e.detail.val);
+    };
+    window.addEventListener("local-storage-sync", handleStorage);
+    return () => window.removeEventListener("local-storage-sync", handleStorage);
+  }, [key]);
+
   const save = (v) => {
     setVal(v);
     try { 
       if (secretKey) {
-        // Encrypt the data before saving it to the phone
         const encrypted = CryptoJS.AES.encrypt(JSON.stringify(v), secretKey).toString();
         window.localStorage.setItem(key, encrypted); 
       }
     } catch(e) {}
+    window.dispatchEvent(new CustomEvent("local-storage-sync", { detail: { key, val: v } }));
   };
   return [val, save];
 }
+
+// --- 2. STANDARD LOCAL STORAGE (For Non-Sensitive UI Settings) ---
+function useLocalStorage(key, init) {
+  const [val, setVal] = useState(() => {
+    try {
+      const x = window.localStorage.getItem(key);
+      return x !== null ? JSON.parse(x) : init;
+    } catch(e) { return init; }
+  });
 
   useEffect(() => {
     const handleStorage = (e) => {
@@ -293,10 +295,10 @@ function Dur({h,m,sh,sm}){
   </div>;
 }
 
-function AIBtn({prompt, label}){
+function AIBtn({prompt, label, sessionKey}){
   const [status, setStatus] = useState("idle");
-  const [aiModel, setAiModel] = useLocalStorage("pref_ai_model", "chatgpt");
-  const [identity] = useLocalStorage("sys_ctx", "");
+  const [aiModel, setAiModel] = useSecureStorage("pref_ai_model", "chatgpt", sessionKey);
+  const [identity] = useSecureStorage("sys_ctx", "", sessionKey);
 
   const aiLinks = {
     chatgpt: "https://chatgpt.com/", 
@@ -305,7 +307,7 @@ function AIBtn({prompt, label}){
     perplexity: "https://www.perplexity.ai/",
     grok: "https://grok.com/", 
     deepseek: "https://chat.deepseek.com/",
-    manual: null // No link for manual copy
+    manual: null 
   };
 
   const handleBridge = async () => {
@@ -313,7 +315,6 @@ function AIBtn({prompt, label}){
       setStatus("copying");
       const finalPrompt = `ABOUT ME / ASSISTANT PERSONA:\n${identity}\n\nDATA TO ANALYZE (${label}):\n${prompt}\n\nSTRATEGIC INSTRUCTIONS:\n1. Review the data and analyze impact.\n2. Provide insights on betterment and improvisation.\n3. End with an encouragement quote.`;
       
-      // Universal Copy Logic with HTTPS Fallback Check
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(finalPrompt);
       } else if (document.execCommand) {
@@ -330,7 +331,6 @@ function AIBtn({prompt, label}){
       
       setStatus("copied");
 
-      // Only open a link if it's NOT the manual copy option
       setTimeout(() => {
         if (aiLinks[aiModel]) {
           window.open(aiLinks[aiModel], "_blank");
@@ -367,7 +367,6 @@ function AIBtn({prompt, label}){
 }
 
 function GenericLogger({ sectionId, title, icon, tagsStr, sessionKey }) {
-  // --- UPDATED: Using Secure Storage ---
   const [entries, setEntries] = useSecureStorage(`entries_${sectionId}`, [], sessionKey);
   const [text, setText] = useState("");
   const [cat, setCat] = useState(null);
@@ -378,7 +377,6 @@ function GenericLogger({ sectionId, title, icon, tagsStr, sessionKey }) {
     return String(n.getHours()).padStart(2, "0") + ":" + String(n.getMinutes()).padStart(2, "0");
   });
 
-  // Syncs tags directly from the Config string provided
   const categories = (tagsStr || "").split(",").map((t, i) => ({ n: t.trim(), ...PALETTE[i % PALETTE.length] })).filter(x => x.n);
 
   function add() {
@@ -424,18 +422,16 @@ function GenericLogger({ sectionId, title, icon, tagsStr, sessionKey }) {
           </div>
         );
       })}
-      {entries.length > 0 && <AIBtn label={`${title} Analysis`} prompt={log} />}
+      {entries.length > 0 && <AIBtn label={`${title} Analysis`} prompt={log} sessionKey={sessionKey} />}
     </div>
   );
 }
 
-// Redirecting all specific tabs to the unified Master Engine
 function Activity({ sessionKey }){
   const [actStr]=useSecureStorage("sys_act","Deep work, Meetings, Commute, Break, Admin", sessionKey);
   return <GenericLogger sectionId="activity" title="Journal" icon="◎" tagsStr={actStr} sessionKey={sessionKey} />;
 }
 function Finance({ sessionKey }){
-  // --- UPDATED: Secure Financial Ledgers ---
   const [expenses,setExpenses]=useSecureStorage("fin_exp", [], sessionKey); 
   const [invs,setInvs]=useSecureStorage("fin_inv", [], sessionKey);
   const [expStr]=useSecureStorage("sys_exp","Food, Transport, Bills, Family, Fun, Other", sessionKey);
@@ -444,8 +440,6 @@ function Finance({ sessionKey }){
   const [tab,setTab]=useState("exp");
   const [ed,setEd]=useState(""); const [ea,setEa]=useState(""); const [ec,setEc]=useState(null);
   const [id,setId]=useState(""); const [ia,setIa]=useState(""); const [ic,setIc]=useState(null);
-
-  // ... (Leave the rest of the Finance function exactly the same) ...
 
   const ECATS = expStr.split(",").map(s=>s.trim()).filter(x=>x);
   const ICATS = invStr.split(",").map(s=>s.trim()).filter(x=>x);
@@ -496,7 +490,7 @@ function Finance({ sessionKey }){
         </div>
       ))}
     </div>
-    <AIBtn label="Ledger Analysis" prompt={log} />
+    <AIBtn label="Ledger Analysis" prompt={log} sessionKey={sessionKey} />
   </div>;
 }
 function Gym({ sessionKey }){
@@ -509,7 +503,6 @@ function Skills({ sessionKey }){
 }
 
 function Settings({ sessionKey }){
-  // --- UPDATED: Secure Configuration ---
   const [sysCtx, setSysCtx] = useSecureStorage("sys_ctx", "You are a helpful personal assistant. Keep responses direct, warm, and max 250 words.", sessionKey);
   const [sysAct, setSysAct] = useSecureStorage("sys_act", "Deep work, Meetings, Commute, Break, Admin", sessionKey);
   const [sysExp, setSysExp] = useSecureStorage("sys_exp", "Food, Transport, Bills, Family, Fun, Other", sessionKey);
@@ -519,7 +512,6 @@ function Settings({ sessionKey }){
 
   const [draftCtx, setDraftCtx] = useState(sysCtx);
   const [draftAct, setDraftAct] = useState(sysAct);
-  // ... (keep the other draft states exactly the same)
   const [draftExp, setDraftExp] = useState(sysExp);
   const [draftInv, setDraftInv] = useState(sysInv);
   const [draftGym, setDraftGym] = useState(sysGym);
@@ -552,8 +544,9 @@ function Settings({ sessionKey }){
     }
   };
 
-  const [customTabs, setCustomTabs] = useSecureStorage("custom_tabs", [], sessionKey);
-const [draftCustom, setDraftCustom] = useState(Array.isArray(customTabs) ? customTabs : []);
+  // Custom tabs remain unencrypted so the lock screen can read them
+  const [customTabs, setCustomTabs] = useLocalStorage("custom_tabs", []);
+  const [draftCustom, setDraftCustom] = useState(Array.isArray(customTabs) ? customTabs : []);
   const hasCustomChanges = JSON.stringify(draftCustom) !== JSON.stringify(customTabs);
 
   const saveCustomTabs = () => {
@@ -587,12 +580,11 @@ const [draftCustom, setDraftCustom] = useState(Array.isArray(customTabs) ? custo
     reader.readAsText(file);
   };
 
-  // NEW: Storage Size Calculator
   const getStorageSize = () => {
     let total = 0;
     for (let x in localStorage) {
       if (localStorage.hasOwnProperty(x)) {
-        total += ((localStorage[x].length + x.length) * 2); // 2 bytes per character
+        total += ((localStorage[x].length + x.length) * 2);
       }
     }
     return (total / 1024 / 1024).toFixed(2);
@@ -600,30 +592,21 @@ const [draftCustom, setDraftCustom] = useState(Array.isArray(customTabs) ? custo
   const storageUsed = getStorageSize();
 
   return <div>
-
-    {/* SECTION 1 — SYSTEM DEFAULTS */}
     <div className="card">
       <h3 style={{marginBottom:6, fontSize:18}}>System Defaults</h3>
       <p style={{fontSize:12, color:"#8E8E93", marginBottom:16, fontStyle:"italic"}}>Edit tags for each built-in section. Separate with commas.</p>
-
       <span className="lbl">Assistant Persona</span>
       <textarea rows={3} value={draftCtx} onChange={e=>setDraftCtx(e.target.value)} className="inp"/>
-
       <span className="lbl">Journal Tags</span>
       <input value={draftAct} onChange={e=>setDraftAct(e.target.value)} className="inp"/>
-
       <span className="lbl">Ledger — Expense Tags</span>
       <input value={draftExp} onChange={e=>setDraftExp(e.target.value)} className="inp"/>
-
       <span className="lbl">Ledger — Investment Tags</span>
       <input value={draftInv} onChange={e=>setDraftInv(e.target.value)} className="inp"/>
-
       <span className="lbl">Training Tags</span>
       <input value={draftGym} onChange={e=>setDraftGym(e.target.value)} className="inp"/>
-
       <span className="lbl">Study Tags</span>
       <input value={draftSkill} onChange={e=>setDraftSkill(e.target.value)} className="inp"/>
-
       <div style={{display:"flex", gap:8}}>
         <button onClick={restoreDefaults} className="pbtn" style={{flex:1, background:"transparent", color:"#8E8E93", border:"1px dashed #C7C7CC", boxShadow:"none", marginTop:0}}>
           Restore Defaults
@@ -634,14 +617,12 @@ const [draftCustom, setDraftCustom] = useState(Array.isArray(customTabs) ? custo
       </div>
     </div>
 
-    {/* SECTION 2 — CUSTOM TABS */}
     <div className="card">
       <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6}}>
         <h3 style={{fontSize:18}}>My Custom Tabs</h3>
         <span style={{fontSize:11, color:"#8E8E93", fontWeight:700}}>{draftCustom.length}/4 SLOTS</span>
       </div>
       <p style={{fontSize:12, color:"#8E8E93", marginBottom:16, fontStyle:"italic"}}>Add up to 4 extra tabs. These appear under More.</p>
-
       {draftCustom.map((t, idx) => (
         <div key={t.id} style={{marginBottom:14, padding:14, background:"#F2F2F7", borderRadius:16}}>
           <div style={{display:"flex", gap:8, marginBottom:8}}>
@@ -653,7 +634,6 @@ const [draftCustom, setDraftCustom] = useState(Array.isArray(customTabs) ? custo
           <input value={t.tags||""} onChange={e=>{const n=[...draftCustom]; n[idx].tags=e.target.value; setDraftCustom(n);}} className="inp" style={{marginBottom:0, padding:10, fontSize:13}} placeholder="e.g. Prayer, Meditation..."/>
         </div>
       ))}
-
       {draftCustom.length < 4 && (
         <button onClick={()=>setDraftCustom([...draftCustom, {id:"tab_"+Date.now(), icon:"📝", label:"New Tab", tags:"General"}])} className="pbtn" style={{background:"transparent", color:"#5E5CE6", border:"1.5px solid #5E5CE6", boxShadow:"none"}}>
           + Add Custom Tab
@@ -662,7 +642,6 @@ const [draftCustom, setDraftCustom] = useState(Array.isArray(customTabs) ? custo
       {hasCustomChanges && <button onClick={saveCustomTabs} className="pbtn" style={{marginTop:12}}>Save Layout</button>}
     </div>
 
-    {/* SECTION 3 — ARCHIVE (With Live Storage Readout) */}
     <div className="card" style={{border:"1.5px dashed #C7C7CC"}}>
       <h3 style={{marginBottom:8, fontSize:18}}>Archive Protection</h3>
       <p style={{fontSize:11, color:"#8E8E93", marginBottom:15, fontStyle:"italic"}}>
@@ -677,7 +656,6 @@ const [draftCustom, setDraftCustom] = useState(Array.isArray(customTabs) ? custo
       </div>
     </div>
 
-    {/* --- NEW: SILENT VERSION DISPLAY --- */}
     <div style={{textAlign: "center", marginTop: 24, marginBottom: 10}}>
       <span style={{fontSize: 10, color: "#C7C7CC", letterSpacing: 1, textTransform: "uppercase", fontWeight: 700}}>My Chronicles • v1.1.0</span>
     </div>
@@ -691,7 +669,6 @@ function Prophecy({ sessionKey }){
   const [aiModel, setAiModel] = useSecureStorage("pref_ai_model", "chatgpt", sessionKey);
   const [identity] = useSecureStorage("sys_ctx", "", sessionKey);
 
-  // --- UPDATED: Securely pulling all logs for the AI ---
   const [actEntries] = useSecureStorage("entries_activity", [], sessionKey);
   const [gymEntries] = useSecureStorage("entries_gym", [], sessionKey);
   const [skillEntries] = useSecureStorage("entries_skills", [], sessionKey);
@@ -699,7 +676,6 @@ function Prophecy({ sessionKey }){
   const [finInv] = useSecureStorage("fin_inv", [], sessionKey);
 
   const aiLinks = {
-  // ... (Leave the rest of Prophecy exactly the same) ...
     chatgpt: "https://chatgpt.com/",
     gemini: "https://gemini.google.com/",
     claude: "https://claude.ai/",
@@ -713,7 +689,7 @@ function Prophecy({ sessionKey }){
   const MODES = [
     { id: "current", label: "⚠️ Current Path", desc: "If nothing changes" },
     { id: "heroic", label: "🦁 Heroic Path", desc: "If you level up" },
-    { id: "both", label: "🎬 Full Movie (only text mode; video mode coming soon)", desc: "Both paths, cinematic" },
+    { id: "both", label: "🎬 Full Movie", desc: "Both paths, cinematic" },
   ];
 
   const totalTracked = [
@@ -723,11 +699,11 @@ function Prophecy({ sessionKey }){
   ];
 
   const uniqueDays = [...new Set(totalTracked.map(e => e.time?.slice(0,5)))].length;
-const hasData = timeframe === "1 Day" ? totalTracked.length > 0 :
+  const hasData = timeframe === "1 Day" ? totalTracked.length > 0 :
                 timeframe === "1 Week" ? uniqueDays >= 3 :
                 timeframe === "1 Month" ? uniqueDays >= 7 :
                 uniqueDays >= 30;
-const lockMsg = timeframe === "1 Day" ? "Log some activity first" :
+  const lockMsg = timeframe === "1 Day" ? "Log some activity first" :
                 timeframe === "1 Week" ? `Need 3+ days of logs (you have ${uniqueDays})` :
                 timeframe === "1 Month" ? `Need 7+ days of logs (you have ${uniqueDays})` :
                 `Need 30+ days of logs (you have ${uniqueDays})`;
@@ -744,15 +720,7 @@ const lockMsg = timeframe === "1 Day" ? "Log some activity first" :
     const modeInstructions = {
       current: `Write ONLY the "Current Path" — a short, vivid, present-tense narrative story of what this person's life looks like ${timeframe} from now if nothing changes. Write like a novelist, not a coach. No bullet points. No video or film language. Pure prose, 3 paragraphs max.`,
       heroic: `Write ONLY the "Heroic Path" — a short, vivid, present-tense narrative story of what this person's life looks like ${timeframe} from now if they make the right changes. Write like a novelist, not a coach. No bullet points. No video or film language. Pure prose, 3 paragraphs max.`,
-      both: `Write two short narrative stories in present tense:
-
-CURRENT PATH — what life looks like ${timeframe} from now if nothing changes. Honest, specific, no sugarcoating.
-
-HEROIC PATH — what life looks like ${timeframe} from now if they make the right changes. Earned, real, not fantasy.
-
-End with THE 3 PIVOTS — the exact 3 actions that decide which story becomes real.
-
-Write like a novelist. No bullet points. No video or film language. Pure prose.`
+      both: `Write two short narrative stories in present tense:\n\nCURRENT PATH — what life looks like ${timeframe} from now if nothing changes. Honest, specific, no sugarcoating.\n\nHEROIC PATH — what life looks like ${timeframe} from now if they make the right changes. Earned, real, not fantasy.\n\nEnd with THE 3 PIVOTS — the exact 3 actions that decide which story becomes real.\n\nWrite like a novelist. No bullet points. No video or film language. Pure prose.`
     };
 
     return `ABOUT ME:\n${identity || "A disciplined person working toward their goals."}\n\nMY LOGS (Recent Activity):\n${logSummary}\n\nMY FINANCES:\n${finSummary}\n\nPROPHECY REQUEST — ${timeframe.toUpperCase()} FROM NOW:\n\n${modeInstructions[mode]}\n\nSTYLE RULES:\n- Write like a movie narrator. Present tense. Vivid scenes.\n- Use specific details from the logs (actual categories, times, patterns).\n- Each scene: 3-4 punchy paragraphs max.\n- Make the person FEEL it, not just read it.\n- End with 1 powerful line that stays with them.`;
@@ -797,7 +765,6 @@ Write like a novelist. No bullet points. No video or film language. Pure prose.`
 
   return (
     <div>
-      {/* HEADER CARD */}
       <div className="card" style={{background: "linear-gradient(135deg, #1C1C1E 0%, #2C2C2E 100%)", border: "none", textAlign: "center", padding: 28}}>
         <div style={{fontSize: 48, marginBottom: 8}}>🎬</div>
         <h2 style={{color: "#F2F2F7", fontSize: 24, marginBottom: 6}}>Life Prophecy</h2>
@@ -806,7 +773,6 @@ Write like a novelist. No bullet points. No video or film language. Pure prose.`
         </p>
       </div>
 
-      {/* LOG SNAPSHOT */}
       <div className="card">
         <span className="lbl">Your Log Snapshot</span>
         {!hasData ? (
@@ -844,7 +810,6 @@ Write like a novelist. No bullet points. No video or film language. Pure prose.`
         )}
       </div>
 
-      {/* TIMEFRAME SELECTOR */}
       <div className="card">
         <span className="lbl">Prophecy Timeframe</span>
         <div style={{display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 20}}>
@@ -891,7 +856,6 @@ Write like a novelist. No bullet points. No video or film language. Pure prose.`
 </div>
 }
 
-      {/* HOW IT WORKS */}
       <div className="card" style={{background: "#F2F2F7", border: "none"}}>
         <span className="lbl">How It Works</span>
         {[
@@ -914,7 +878,6 @@ Write like a novelist. No bullet points. No video or film language. Pure prose.`
   );
 }
 
-// --- NEW: VERSION CONTROL & CHANGELOG ---
 const APP_VERSION = "v1.1.0";
 const CHANGELOG = [
   "Uniform typography and interface design.",
@@ -924,18 +887,15 @@ const CHANGELOG = [
 ];
 
 function App(){
-  // --- NEW: THE GATEKEEPER (ZERO-KNOWLEDGE VAULT) ---
-  // You must go to https://emn178.github.io/online-tools/sha256.html
-  // Type each password in, and paste the resulting hash below:
   const VALID_HASHES = [
-    "YOUR_HASH_HERE", // Hash for KRISHNA-ADMIN-99
-    "YOUR_HASH_HERE", // Hash for GUEST-A1B2
-    "YOUR_HASH_HERE", // Hash for USER-77XQ
-    "YOUR_HASH_HERE", // Hash for NAVEEN-8977
-    "YOUR_HASH_HERE", // Hash for VENKATESH-132
-    "YOUR_HASH_HERE", // Hash for HARIKRISHNA-324
-    "YOUR_HASH_HERE", // Hash for SHIVA-SATTVA
-    "YOUR_HASH_HERE"  // Hash for FAMILY-0000
+    "YOUR_HASH_HERE", 
+    "YOUR_HASH_HERE", 
+    "YOUR_HASH_HERE", 
+    "YOUR_HASH_HERE", 
+    "YOUR_HASH_HERE", 
+    "YOUR_HASH_HERE", 
+    "YOUR_HASH_HERE", 
+    "YOUR_HASH_HERE"  
   ];
 
   const [sessionKey, setSessionKey] = useState(sessionStorage.getItem("active_key") || null);
@@ -951,9 +911,7 @@ function App(){
   const [welcomeStep, setWelcomeStep] = useState(1);
   const [tempIdentity, setTempIdentity] = useState("");
 
-  // --- NEW: UPDATE TRACKER ---
   const [lastSeenVersion, setLastSeenVersion] = useLocalStorage("last_seen_version", "v1.0.0");
-  // Only show update modal if they have finished the welcome tour AND the versions don't match
   const [showUpdate, setShowUpdate] = useState(hasVisited === "true" && lastSeenVersion !== APP_VERSION);
 
   const finishUpdate = () => {
@@ -999,20 +957,17 @@ function App(){
   ];
 
   const handleUnlock = () => {
-    // 1. Hash what the user just typed
     const attemptHash = CryptoJS.SHA256(pinAttempt.trim()).toString();
     
-    // 2. Check if their hash matches our approved list
     if (VALID_HASHES.includes(attemptHash)) {
       setSessionKey(pinAttempt.trim());
-      sessionStorage.setItem("active_key", pinAttempt.trim()); // Keeps them logged in until they close the tab
+      sessionStorage.setItem("active_key", pinAttempt.trim()); 
     } else {
       alert("Access Denied: Invalid Passcode.");
       setPinAttempt("");
     }
   };
 
-  // --- NEW: THE LOCK SCREEN RENDER ---
   if (!sessionKey) {
     return <div style={{maxWidth: 520, margin: "0 auto", padding: "0 20px", height: "100vh", display: "flex", flexDirection: "column", justifyContent: "center"}}>
       <div className="card" style={{textAlign: "center", padding: "40px 20px", boxShadow: "0 20px 40px rgba(0,0,0,0.08)"}}>
@@ -1034,7 +989,7 @@ function App(){
       </div>
     </div>;
   }
-  // --- EXISTING APP RENDER ---
+  
   return <div style={{maxWidth: 520, margin: "0 auto", padding: "0 20px 100px"}}>
     {showWelcome && (
       <div style={{position:"fixed", top:0, left:0, right:0, bottom:0, background:"rgba(28,28,30,0.95)", backdropFilter:"blur(8px)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:20}}>
@@ -1079,7 +1034,6 @@ function App(){
       </div>
     )}
 
-    {/* --- NEW: WHAT'S NEW MODAL (The Announcement Way) --- */}
     {showUpdate && (
       <div style={{position:"fixed", top:0, left:0, right:0, bottom:0, background:"rgba(28,28,30,0.95)", backdropFilter:"blur(8px)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:20}}>
         <div className="card welcome-card" style={{width:"100%", maxWidth:400, padding:30}}>
@@ -1107,7 +1061,6 @@ function App(){
       </p>
     </div>
 
-    {/* MORE DRAWER */}
     {showMore && (
       <div style={{position:"fixed", bottom:90, left:"50%", transform:"translateX(-50%)", width:"calc(100% - 40px)", maxWidth:480, background:"#fff", borderRadius:24, padding:16, boxShadow:"0 -4px 30px rgba(0,0,0,0.12)", zIndex:800, display:"flex", flexWrap:"wrap", gap:8}}>
         {moreTabs.map(t => (
@@ -1149,4 +1102,3 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
-
