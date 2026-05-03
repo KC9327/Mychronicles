@@ -551,7 +551,7 @@ function Settings({ sessionKey }){
 
   const saveCustomTabs = () => {
     if(draftCustom.length > 4) return alert("Maximum 4 custom tabs allowed.");
-    setCustomTabs(JSON.stringify(draftCustom));
+    setCustomTabs(draftCustom); 
     alert("Layout Saved!");
   };
 
