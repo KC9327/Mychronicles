@@ -1084,17 +1084,20 @@ function App(){
     )}
 
     <div className="tab-content" key={tab}>
-      {allTabs.map(t => (
-        <div key={t.id} style={{display: tab === t.id ? "block" : "none"}}>
-          {t.id === "activity" ? <Activity sessionKey={sessionKey} /> :
-           t.id === "finance" ? <Finance sessionKey={sessionKey} /> :
-           t.id === "gym" ? <Gym sessionKey={sessionKey} /> :
-           t.id === "skills" ? <Skills sessionKey={sessionKey} /> :
-           t.id === "prophecy" ? <Prophecy sessionKey={sessionKey} /> :
-           t.id === "settings" ? <Settings sessionKey={sessionKey} /> :
-           <GenericLogger sectionId={t.id} title={t.label} icon={t.icon} tagsStr={t.tags} sessionKey={sessionKey} />}
-        </div>
-      ))}
+      {Array.isArray(allTabs) && allTabs.map(t => {
+        if (!t || !t.id) return null;
+        return (
+          <div key={t.id} style={{display: tab === t.id ? "block" : "none"}}>
+            {t.id === "activity" ? <Activity sessionKey={sessionKey} /> :
+             t.id === "finance" ? <Finance sessionKey={sessionKey} /> :
+             t.id === "gym" ? <Gym sessionKey={sessionKey} /> :
+             t.id === "skills" ? <Skills sessionKey={sessionKey} /> :
+             t.id === "prophecy" ? <Prophecy sessionKey={sessionKey} /> :
+             t.id === "settings" ? <Settings sessionKey={sessionKey} /> :
+             <GenericLogger sectionId={t.id} title={t.label || "Custom Log"} icon={t.icon || "📝"} tagsStr={t.tags} sessionKey={sessionKey} />}
+          </div>
+        );
+      })}
     </div>
 
     <div className="nav">
