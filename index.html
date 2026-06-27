@@ -442,16 +442,19 @@ function Finance({ sessionKey }){
   const [ed,setEd]=useState(""); const [ea,setEa]=useState(""); const [ec,setEc]=useState(null);
   const [id,setId]=useState(""); const [ia,setIa]=useState(""); const [ic,setIc]=useState(null);
 
-  const ECATS = expStr.split(",").map(s=>s.trim()).filter(x=>x);
-  const ICATS = invStr.split(",").map(s=>s.trim()).filter(x=>x);
+  const safeExpenses = expenses || [];
+  const safeInvs = invs || [];
 
-  const te = expenses.reduce((s,e)=>s+parseFloat(e.a||0),0); 
-  const ti = invs.reduce((s,e)=>s+parseFloat(e.a||0),0);
+  const ECATS = (expStr || "").split(",").map(s=>s.trim()).filter(x=>x);
+  const ICATS = (invStr || "").split(",").map(s=>s.trim()).filter(x=>x);
+
+  const te = safeExpenses.reduce((s,e)=>s+parseFloat(e.a||0),0); 
+  const ti = safeInvs.reduce((s,e)=>s+parseFloat(e.a||0),0);
   
-  function addE(){if(!ed||!ea||!ec)return alert("Fill all fields");setExpenses([...expenses,{id:Date.now(),d:ed,a:ea,c:ec}]);setEd("");setEa("");setEc(null);}
-  function addI(){if(!id||!ia||!ic)return alert("Fill all fields");setInvs([...invs,{id:Date.now(),d:id,a:ia,c:ic}]);setId("");setIa("");setIc(null);}
+  function addE(){if(!ed||!ea||!ec)return alert("Fill all fields");setExpenses([...safeExpenses,{id:Date.now(),d:ed,a:ea,c:ec}]);setEd("");setEa("");setEc(null);}
+  function addI(){if(!id||!ia||!ic)return alert("Fill all fields");setInvs([...safeInvs,{id:Date.now(),d:id,a:ia,c:ic}]);setId("");setIa("");setIc(null);}
   
-  const log = "Expenses:\n"+expenses.map(e=>`- ${e.c}: ${e.d} ₹${e.a}`).join("\n") + "\nInvestments:\n"+invs.map(e=>`- ${e.c}: ${e.d} ₹${e.a}`).join("\n");
+  const log = "Expenses:\n"+safeExpenses.map(e=>`- ${e.c}: ${e.d} ₹${e.a}`).join("\n") + "\nInvestments:\n"+safeInvs.map(e=>`- ${e.c}: ${e.d} ₹${e.a}`).join("\n");
 
   return <div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:18}}>
@@ -484,10 +487,10 @@ function Finance({ sessionKey }){
 
     <div className="card">
       <span className="lbl">History</span>
-      {(tab==="exp"?expenses:invs).map(e=>(
+      {(tab==="exp"?safeExpenses:safeInvs).map(e=>(
         <div key={e.id} style={{display:"flex", justifyContent:"space-between", padding:"10px 0", borderBottom:"1px solid #EBE7DD"}}>
           <div style={{fontSize:14}}>{e.d} <span style={{fontSize:10, color:"#888375", marginLeft:5}}>{e.c}</span></div>
-          <div style={{fontWeight:700}}>₹{e.a} <button onClick={()=>{tab==="exp"?setExpenses(expenses.filter(x=>x.id!==e.id)):setInvs(invs.filter(x=>x.id!==e.id))}} className="dbtn" style={{float:"none", marginLeft:10}}>×</button></div>
+          <div style={{fontWeight:700}}>₹{e.a} <button onClick={()=>{tab==="exp"?setExpenses(safeExpenses.filter(x=>x.id!==e.id)):setInvs(safeInvs.filter(x=>x.id!==e.id))}} className="dbtn" style={{float:"none", marginLeft:10}}>×</button></div>
         </div>
       ))}
     </div>
