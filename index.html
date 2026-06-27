@@ -381,18 +381,19 @@ function GenericLogger({ sectionId, title, icon, tagsStr, sessionKey }) {
 
   function add() {
     if (!text.trim() || !cat) return alert("Fill entry and select category");
-    setEntries([...entries, { id: Date.now(), text, cat, mins: h * 60 + m, time }]);
+    setEntries([...(entries || []), { id: Date.now(), text, cat, mins: h * 60 + m, time }]);
     setText(""); setCat(null); setH(0); setM(30);
   }
 
-  const total = entries.reduce((s, e) => s + e.mins, 0);
-  const log = entries.map(e => `${e.time} | ${e.cat} | ${e.mins}m | ${e.text}`).join("\n");
+  const safeEntries = entries || [];
+  const total = safeEntries.reduce((s, e) => s + (e.mins || 0), 0);
+  const log = safeEntries.map(e => `${e.time} | ${e.cat} | ${e.mins}m | ${e.text}`).join("\n");
 
   return (
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
         <div style={{ background: "#232528", borderRadius: 8, padding: 16, color: "#F8F7F2", textAlign: "center", borderBottom: "4px solid #7A2A3B" }}>
-          <div style={{ fontSize: 28, fontFamily: "'Playfair Display',serif" }}>{entries.length}</div>
+          <div style={{ fontSize: 28, fontFamily: "'Playfair Display',serif" }}>{safeEntries.length}</div>
           <div style={{ fontSize: 11, color: "#C4BEAD", marginTop: 4, letterSpacing: 1 }}>ENTRIES</div>
         </div>
         <div style={{ background: "#232528", borderRadius: 8, padding: 16, color: "#F8F7F2", textAlign: "center", borderBottom: "4px solid #7A2A3B" }}>
@@ -411,22 +412,22 @@ function GenericLogger({ sectionId, title, icon, tagsStr, sessionKey }) {
         <Dur h={h} m={m} sh={setH} sm={setM} />
         <button onClick={add} className="pbtn" style={{ background: "#232528" }}>+ Save to {title}</button>
       </div>
-      {[...entries].reverse().map(e => {
+      {[...safeEntries].reverse().map(e => {
         const c = categories.find(x => x.n === e.cat);
         return (
           <div key={e.id} className="card" style={{ borderLeft: "4px solid " + (c?.br || "#7A2A3B") }}>
-            <button className="dbtn" onClick={() => setEntries(entries.filter(x => x.id !== e.id))}>×</button>
+            <button className="dbtn" onClick={() => setEntries(safeEntries.filter(x => x.id !== e.id))}>×</button>
             <span style={{ fontSize: 11, fontWeight: 700 }}>{e.cat}</span>
             <div style={{ fontSize: 15, marginTop: 10 }}>{e.text}</div>
             <div style={{ fontSize: 12, color: "#888375", marginTop: 8 }}>{e.time} · {e.mins}m</div>
           </div>
         );
       })}
-      {entries.length > 0 && <AIBtn label={`${title} Analysis`} prompt={log} sessionKey={sessionKey} />}
+      {safeEntries.length > 0 && <AIBtn label={`${title} Analysis`} prompt={log} sessionKey={sessionKey} />}
     </div>
   );
 }
-
+  
 function Activity({ sessionKey }){
   const [actStr]=useSecureStorage("sys_act","Deep work, Meetings, Commute, Break, Admin", sessionKey);
   return <GenericLogger sectionId="activity" title="Journal" icon="◎" tagsStr={actStr} sessionKey={sessionKey} />;
