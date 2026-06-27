@@ -696,10 +696,16 @@ function Prophecy({ sessionKey }){
     { id: "both", label: "🎬 Full Movie", desc: "Both paths, cinematic" },
   ];
 
+  const safeAct = actEntries || [];
+  const safeGym = gymEntries || [];
+  const safeSkill = skillEntries || [];
+  const safeFinExp = finExp || [];
+  const safeFinInv = finInv || [];
+
   const totalTracked = [
-    ...actEntries.map(e => ({ type: "Activity", ...e })),
-    ...gymEntries.map(e => ({ type: "Training", ...e })),
-    ...skillEntries.map(e => ({ type: "Study", ...e })),
+    ...safeAct.map(e => ({ type: "Activity", ...e })),
+    ...safeGym.map(e => ({ type: "Training", ...e })),
+    ...safeSkill.map(e => ({ type: "Study", ...e })),
   ];
 
   const uniqueDays = [...new Set(totalTracked.map(e => e.time?.slice(0,5)))].length;
@@ -717,8 +723,8 @@ function Prophecy({ sessionKey }){
       ? totalTracked.map(e => `[${e.type}] ${e.time || ""} | ${e.cat} | ${e.mins}m | ${e.text}`).join("\n")
       : "No activity logs yet.";
 
-    const finSummary = finExp.length > 0
-      ? `Expenses: ${finExp.map(e => `${e.c}: Rs.${e.a}`).join(", ")}\nInvestments: ${finInv.map(e => `${e.c}: Rs.${e.a}`).join(", ") || "None"}`
+    const finSummary = safeFinExp.length > 0
+      ? `Expenses: ${safeFinExp.map(e => `${e.c}: Rs.${e.a}`).join(", ")}\nInvestments: ${safeFinInv.map(e => `${e.c}: Rs.${e.a}`).join(", ") || "None"}`
       : "No financial logs yet.";
 
     const modeInstructions = {
@@ -795,7 +801,7 @@ function Prophecy({ sessionKey }){
                 <div style={{fontSize: 10, color: "#8E8E93", marginTop: 2}}>TRACKED</div>
               </div>
               <div style={{background: "#F2F2F7", borderRadius: 16, padding: 12, textAlign: "center"}}>
-                <div style={{fontSize: 22, fontWeight: 800, color: "#1C1C1E"}}>{finExp.length}</div>
+                <div style={{fontSize: 22, fontWeight: 800, color: "#1C1C1E"}}>{safeFinExp.length}</div>
                 <div style={{fontSize: 10, color: "#8E8E93", marginTop: 2}}>EXPENSES</div>
               </div>
             </div>
